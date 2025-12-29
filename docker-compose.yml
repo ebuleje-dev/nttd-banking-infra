@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+
+  config-server:
+    image: nttd-banking/config-server:1.0.0
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      APP_ENV: ${APP_ENV}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      CONFIG_SSH_KEY: ${CONFIG_SSH_KEY}
+      SSH_KEY_PASSPHRASE: ${SSH_KEY_PASSPHRASE}
+    volumes:
+      - ${SSH_PRIVATE_KEY_PATH}:${CONFIG_SSH_KEY}:ro
+      - ${SSH_KNOWN_HOSTS_PATH}:/root/.ssh/known_hosts:ro
+    networks:
+      - banking-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eureka-server:
+    image: nttd-banking/eureka-server:1.0.0
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    depends_on:
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - banking-net
+
+  customer-service:
+    image: nttd-banking/customer-service:1.0.0
+    container_name: customer-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - banking-net
+
+networks:
+  banking-net:
+    driver: bridge
