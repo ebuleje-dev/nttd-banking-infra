@@ -1,0 +1,81 @@
+services:
+
+  # =========================
+  # CONFIG SERVER (LOCAL)
+  # =========================
+  config-server:
+    image: nttd-banking/config-server:1.0.0
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      APP_ENV: local
+      SPRING_PROFILES_ACTIVE: local
+    networks:
+      - banking-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health | grep -q 'UP'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================
+  # EUREKA SERVER
+  # =========================
+  eureka-server:
+    image: nttd-banking/eureka-server:1.0.0
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    depends_on:
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - banking-net
+
+  # =========================
+  # CUSTOMER SERVICE
+  # =========================
+  customer-service:
+    image: nttd-banking/customer-service:1.0.0
+    container_name: customer-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - banking-net
+
+  # =========================
+  # API GATEWAY
+  # =========================
+  api-gateway:
+    image: nttd-banking/api-gateway:1.0.0
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      customer-service:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - banking-net
+
+# =========================
+# NETWORK
+# =========================
+networks:
+  banking-net:
+    driver: bridge
