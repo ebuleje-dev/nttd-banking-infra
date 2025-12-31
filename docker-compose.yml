@@ -2,6 +2,9 @@ version: "3.9"
 
 services:
 
+  # =========================
+  # CONFIG SERVER
+  # =========================
   config-server:
     image: nttd-banking/config-server:1.0.0
     container_name: config-server
@@ -23,6 +26,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # =========================
+  # EUREKA SERVER
+  # =========================
   eureka-server:
     image: nttd-banking/eureka-server:1.0.0
     container_name: eureka-server
@@ -36,6 +42,9 @@ services:
     networks:
       - banking-net
 
+  # =========================
+  # CUSTOMER SERVICE
+  # =========================
   customer-service:
     image: nttd-banking/customer-service:1.0.0
     container_name: customer-service
@@ -51,6 +60,29 @@ services:
     networks:
       - banking-net
 
+  # =========================
+  # API GATEWAY
+  # =========================
+  api-gateway:
+    image: nttd-banking/api-gateway:1.0.0
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      customer-service:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - banking-net
+
+# =========================
+# NETWORK
+# =========================
 networks:
   banking-net:
     driver: bridge
