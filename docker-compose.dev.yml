@@ -50,6 +50,8 @@ services:
         condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: docker
+    volumes:
+      - ./customer-service-logs:/app/logs
     networks:
       - banking-net
 

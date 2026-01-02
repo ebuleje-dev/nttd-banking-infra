@@ -1,6 +1,9 @@
 # Secrets
 .env
 
+# Logs
+/customer-service-logs
+
 # OS
 .DS_Store
 Thumbs.db
