@@ -36,24 +36,98 @@ services:
       - banking-net
 
   # =========================
-  # CUSTOMER SERVICE
+  # KAFKA
   # =========================
-  customer-service:
-    image: nttd-banking/customer-service:1.0.0
-    container_name: customer-service
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    container_name: kafka
     ports:
-      - "8082:8082"
+      - "29092:29092"
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: 'MkU3OEVBNTcwN'
+    networks:
+      - banking-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # =========================
+  # AKHQ (Kafka UI)
+  # =========================
+  akhq:
+    image: tchiotludo/akhq:latest
+    container_name: akhq
+    ports:
+      - "8092:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            nttd-banking:
+              properties:
+                bootstrap.servers: "kafka:9092"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - banking-net
+
+  # =========================
+  # AUTH SERVICE
+  # =========================
+  auth-service:
+    image: nttd-banking/auth-service:1.0.0
+    container_name: auth-service
+    ports:
+      - "8091:8091"
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
         condition: service_started
+      kafka:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
     volumes:
-      - ./customer-service-logs:/app/logs
+      - ./auth-service-logs:/app/logs
     networks:
       - banking-net
+
+  # =========================
+  # CUSTOMER SERVICE
+  # =========================
+  # customer-service:
+  #   image: nttd-banking/customer-service:1.0.0
+  #   container_name: customer-service
+  #   ports:
+  #     - "8082:8082"
+  #   depends_on:
+  #     config-server:
+  #       condition: service_healthy
+  #     eureka-server:
+  #       condition: service_started
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: docker
+  #   volumes:
+  #     - ./customer-service-logs:/app/logs
+  #   networks:
+  #     - banking-net
 
   # =========================
   # API GATEWAY
@@ -68,7 +142,7 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_started
-      customer-service:
+      auth-service:
         condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: docker
