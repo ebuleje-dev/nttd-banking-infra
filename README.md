@@ -1,22 +1,19 @@
 # nttd-banking-infra
 
-
-### Levantar SonarQube en segundo plano
+### Compose Sonarqube
 ```
 docker-compose -f sonar/docker-compose-sonarqube.yml up -d
-```
-
-### Detener docker compose sonar
-```
 docker-compose -f sonar/docker-compose-sonarqube.yml down
 ```
 
-### Levantar docker compose kafka
+### Compose - Developer
 ```
-docker compose -f kafka/docker-compose-kafka.yml up -d
+docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml down
 ```
 
-### Detener docker compose kafka
+### Compose - nttd
 ```
-docker compose -f kafka/docker-compose-kafka.yml down
+docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml down
 ```
